@@ -8,6 +8,7 @@ langchain-community
 langchain-groq
 chroma-hnswlib
 chromadb
+langgraph
 
 # LLM embeddings and text processing
 sentence-transformers

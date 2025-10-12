@@ -1,0 +1,30 @@
+# Core web framework
+fastapi
+uvicorn
+
+# LangChain ecosystem
+langchain
+langchain-community
+langchain-groq
+chroma-hnswlib
+chromadb
+
+# LLM embeddings and text processing
+sentence-transformers
+tiktoken
+
+# Data handling and environment configuration
+pydantic
+python-dotenv
+numpy
+pandas
+
+# HTTP and web scraping (for document loaders)
+requests
+beautifulsoup4
+unstructured
+markdown
+
+# Utilities
+jinja2
+uuid

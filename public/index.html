@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Healthcare AI Agent</title>
+  <style>
+    :root{
+      --bg:#f8fafc;--card:#fff;--muted:#64748b;--text:#0f172a;--primary:#0f172a;--border:#e2e8f0;--accent:#0ea5e9;--danger:#ef4444
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,"Helvetica Neue",Arial,sans-serif;background:var(--bg);color:var(--text)}
+    .container{max-width:1200px;margin:0 auto;padding:24px}
+    header{position:sticky;top:0;background:#fffcc0e0;background:#ffffffcc;backdrop-filter:saturate(180%) blur(8px);border-bottom:1px solid var(--border);z-index:10}
+    header .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;max-width:1200px;margin:0 auto;padding:12px 24px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;background:var(--primary);color:#fff;font-weight:700}
+    .muted{color:var(--muted)}
+    .grid{display:grid;gap:24px}
+    @media(min-width:1024px){.grid{grid-template-columns:1fr 2fr}}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 1px 2px rgba(2,6,23,.04)}
+    .card header{position:static;background:transparent;border:none}
+    .card-title{font-weight:600;font-size:14px;padding:12px 16px;border-bottom:1px solid var(--border)}
+    .card-body{padding:16px}
+    label{display:block;font-size:13px;color:var(--muted);margin:8px 0 4px}
+    input[type="text"],input[type="number"],select,textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:12px;outline:none}
+    textarea{min-height:80px;resize:vertical}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .row-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+    .chip{background:#f1f5f9;border:1px solid var(--border);color:#334155;border-radius:999px;padding:4px 8px;font-size:12px;display:inline-flex;align-items:center;gap:6px}
+    .chip button{border:none;background:none;color:#64748b;cursor:pointer}
+    .actions{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .btn{appearance:none;border:none;border-radius:12px;background:var(--primary);color:#fff;padding:10px 14px;font-size:14px;cursor:pointer}
+    .btn.secondary{background:#fff;color:var(--text);border:1px solid var(--border)}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .tabs{display:flex;gap:8px}
+    .tab{border:1px solid var(--border);border-radius:999px;padding:6px 10px;font-size:13px;background:#fff;cursor:pointer}
+    .tab.active{background:var(--primary);color:#fff}
+    .chat{height:560px;display:flex;flex-direction:column}
+    .messages{flex:1;overflow:auto;display:flex;flex-direction:column;gap:12px;padding-right:4px}
+    .bubble{border:1px solid var(--border);border-radius:16px;padding:12px;background:#fff}
+    .bubble.assistant{background:#f8fafc}
+    .bubble .role{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+    .row-send{display:flex;gap:8px;margin-top:8px}
+    .error{color:var(--danger);background:#fef2f2;border:1px solid #fecaca;padding:10px;border-radius:12px;font-size:13px;margin-top:8px}
+    .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Monospace;background:#e2e8f0;border-radius:6px;padding:2px 6px;font-size:12px}
+    .small{font-size:12px}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="brand">
+        <div class="logo">HA</div>
+        <div>
+          <div style="font-weight:600">Healthcare AI Agent</div>
+          <div class="muted small">PHC decision support • FastAPI backend</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <select id="language" style="min-width:140px"></select>
+        <button class="btn secondary" id="checkServer">Check Server</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="grid">
+      <!-- Left: Forms -->
+      <div class="space-y">
+        <div class="card">
+          <div class="card-title">Patient Details</div>
+          <div class="card-body">
+            <div class="row">
+              <div>
+                <label>Patient ID (optional)</label>
+                <input type="text" id="p_id" placeholder="auto or custom" />
+              </div>
+              <div>
+                <label>Age</label>
+                <input type="number" id="p_age" value="30" min="0" />
+              </div>
+            </div>
+            <div class="row">
+              <div>
+                <label>Gender</label>
+                <select id="p_gender">
+                  <option>female</option>
+                  <option>male</option>
+                  <option>other</option>
+                </select>
+              </div>
+              <div>
+                <label>Chief Complaint</label>
+                <input type="text" id="p_cc" placeholder="e.g. fever and cough" />
+              </div>
+            </div>
+
+            <div class="row">
+              <div>
+                <label>Symptoms</label>
+                <div class="chips" id="symptoms"></div>
+                <div class="row">
+                  <input type="text" id="symptom_input" placeholder="Add symptom and press Enter" />
+                  <button class="btn secondary" id="symptom_add">Add</button>
+                </div>
+              </div>
+              <div>
+                <label>Medical History</label>
+                <div class="chips" id="history"></div>
+                <div class="row">
+                  <input type="text" id="history_input" placeholder="Add condition and press Enter" />
+                  <button class="btn secondary" id="history_add">Add</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="row-3" style="margin-top:8px">
+              <div>
+                <label>Temp (°C)</label>
+                <input type="number" id="v_temp" />
+              </div>
+              <div>
+                <label>Heart Rate</label>
+                <input type="number" id="v_hr" />
+              </div>
+              <div>
+                <label>BP (e.g. 120/80)</label>
+                <input type="text" id="v_bp" />
+              </div>
+              <div>
+                <label>Resp. Rate</label>
+                <input type="number" id="v_rr" />
+              </div>
+              <div>
+                <label>SpO₂ (%)</label>
+                <input type="number" id="v_spo2" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Facility Context</div>
+          <div class="card-body">
+            <div class="row">
+              <div>
+                <label>Beds Available</label>
+                <input type="number" id="f_beds" value="2" />
+              </div>
+              <div>
+                <label>Has Oxygen</label>
+                <select id="f_oxygen"><option>true</option><option>false</option></select>
+              </div>
+            </div>
+            <div class="row">
+              <div>
+                <label>Has Laboratory</label>
+                <select id="f_lab"><option>true</option><option>false</option></select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Actions</div>
+          <div class="card-body">
+            <div class="actions">
+              <button class="btn" id="runTriage">Run Triage</button>
+              <button class="btn" id="runReferral">Referral</button>
+              <button class="btn" id="runRouting">Routing</button>
+              <button class="btn" id="runResources">Resources</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Knowledge Search</div>
+          <div class="card-body">
+            <div class="row">
+              <input type="text" id="q" placeholder="Search guidelines, protocols, WHO updates…" />
+              <button class="btn" id="searchBtn">Search</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Chat -->
+      <div class="card">
+        <div class="card-title">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div class="tabs">
+              <button class="tab active" data-tab="chat">Chat</button>
+              <button class="tab" data-tab="sources">Sources</button>
+            </div>
+            <div class="muted small">Session: <span id="sessionLabel">(new)</span></div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="tab-chat" class="chat">
+            <div class="messages" id="messages">
+              <div class="muted" style="text-align:center;margin-top:120px">Start a conversation. Include patient details (optional) or just chat normally.</div>
+            </div>
+            <div class="row-send">
+              <input type="text" id="chatInput" placeholder="Type a message to the healthcare agent…" />
+              <button class="btn" id="sendBtn">Send</button>
+            </div>
+            <div id="error" class="error" style="display:none"></div>
+          </div>
+          <div id="tab-sources" style="display:none">
+            <p class="muted small">When the backend returns RAG sources in <span class="kbd">/api/chat</span>, they will appear beneath assistant messages. This tab is reserved for future logs.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ======== Config ========
+    const API_BASE = ""; // e.g. "http://127.0.0.1:8000" (empty = same origin)
+
+    // ======== State ========
+    let sessionId = localStorage.getItem('phc_session_id') || '';
+    const state = { languages: ['English'], language: 'English', loading: false, symptoms: [], history: [] };
+
+    // ======== Helpers ========
+    const $ = (sel) => document.querySelector(sel);
+    function setError(msg){ const el = $('#error'); if(!msg){ el.style.display='none'; el.textContent=''; } else { el.style.display='block'; el.textContent = msg; } }
+    function parseErr(e){ try{ const obj = JSON.parse(String(e.message||e)); return obj.detail || String(e);}catch{return String(e?.message||e||'Unknown error') } }
+    async function apiGet(path){ const r = await fetch(API_BASE+path); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+    async function apiPost(path, body){ const r = await fetch(API_BASE+path,{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+    function pushMessage(role, text, sources){ const wrap = document.createElement('div'); wrap.className = 'bubble '+(role==='assistant'?'assistant':''); wrap.innerHTML = `<div class="role">${role}</div><div class="content" style="white-space:pre-wrap">${escapeHtml(text)}</div>`;
+      if(sources && sources.length){ const s = document.createElement('div'); s.className='muted small'; s.style.marginTop='8px'; const ul = document.createElement('ul'); ul.style.margin='0'; ul.style.paddingLeft='18px'; sources.forEach(src=>{ const li=document.createElement('li'); li.textContent=src; ul.appendChild(li)}); s.innerHTML='<div style="font-weight:600">Sources</div>'; s.appendChild(ul); wrap.appendChild(s); }
+      const list = $('#messages'); if(list.firstElementChild && list.firstElementChild.classList.contains('muted')) list.innerHTML=''; list.appendChild(wrap); list.scrollTo({top:list.scrollHeight, behavior:'smooth'}); }
+    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])) }
+
+    function patientFromUI(){
+      const vital_signs = {};
+      const vtemp = $('#v_temp').value; if(vtemp) vital_signs.temperature = Number(vtemp);
+      const vhr = $('#v_hr').value; if(vhr) vital_signs.heart_rate = Number(vhr);
+      const vbp = $('#v_bp').value; if(vbp) vital_signs.blood_pressure = vbp;
+      const vrr = $('#v_rr').value; if(vrr) vital_signs.respiratory_rate = Number(vrr);
+      const spo2 = $('#v_spo2').value; if(spo2) vital_signs.oxygen_saturation = Number(spo2);
+
+      return {
+        id: $('#p_id').value || null,
+        age: Number($('#p_age').value||0),
+        gender: $('#p_gender').value,
+        chief_complaint: $('#p_cc').value || '',
+        symptoms: state.symptoms.slice(),
+        vital_signs: Object.keys(vital_signs).length? vital_signs : null,
+        medical_history: state.history.slice(),
+      };
+    }
+
+    function facilityFromUI(){
+      return {
+        beds_available: Number($('#f_beds').value||0),
+        has_oxygen: $('#f_oxygen').value === 'true',
+        has_laboratory: $('#f_lab').value === 'true'
+      };
+    }
+
+    function setSession(id){ sessionId = id; localStorage.setItem('phc_session_id', id); $('#sessionLabel').textContent = id ? id.slice(0,8) : '(new)'; }
+
+    // ======== Init ========
+    (async function init(){
+      // Tabs
+      document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{
+        document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        const tab = btn.dataset.tab; $('#tab-chat').style.display = tab==='chat'? 'block':'none'; $('#tab-sources').style.display = tab==='sources'? 'block':'none';
+      }))
+
+      // Language list
+      try{
+        const data = await apiGet('/api/languages');
+        const langSel = $('#language');
+        (data.languages||['English']).forEach(l=>{ const opt=document.createElement('option'); opt.value=l; opt.textContent=l; langSel.appendChild(opt); });
+        langSel.value = data.default || 'English';
+        state.language = langSel.value;
+        langSel.addEventListener('change', ()=> state.language = langSel.value);
+      }catch(e){ /* ignore if endpoint not ready */ }
+
+      // Session label
+      setSession(sessionId);
+
+      // Chip inputs
+      function renderChips(){
+        const sWrap = $('#symptoms'); sWrap.innerHTML='';
+        state.symptoms.forEach((v,i)=>{ const el=document.createElement('span'); el.className='chip'; el.innerHTML=`${escapeHtml(v)} <button title="remove">×</button>`; el.querySelector('button').onclick=()=>{state.symptoms.splice(i,1); renderChips();}; sWrap.appendChild(el); });
+        const hWrap = $('#history'); hWrap.innerHTML='';
+        state.history.forEach((v,i)=>{ const el=document.createElement('span'); el.className='chip'; el.innerHTML=`${escapeHtml(v)} <button title="remove">×</button>`; el.querySelector('button').onclick=()=>{state.history.splice(i,1); renderChips();}; hWrap.appendChild(el); });
+      }
+      renderChips();
+      $('#symptom_input').addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.value.trim()){ state.symptoms.push(e.target.value.trim()); e.target.value=''; renderChips(); }});
+      $('#symptom_add').addEventListener('click', ()=>{ const el=$('#symptom_input'); if(el.value.trim()){ state.symptoms.push(el.value.trim()); el.value=''; renderChips(); }});
+      $('#history_input').addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.value.trim()){ state.history.push(e.target.value.trim()); e.target.value=''; renderChips(); }});
+      $('#history_add').addEventListener('click', ()=>{ const el=$('#history_input'); if(el.value.trim()){ state.history.push(el.value.trim()); el.value=''; renderChips(); }});
+
+      // Buttons
+      $('#checkServer').addEventListener('click', async ()=>{
+        try{ const data = await apiGet('/health'); alert('Server Health\n\n'+JSON.stringify(data,null,2)); }catch(e){ setError(parseErr(e)); }
+      });
+
+      $('#sendBtn').addEventListener('click', sendChat);
+      $('#chatInput').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); sendChat(); }});
+      $('#runTriage').addEventListener('click', runTriage);
+      $('#runReferral').addEventListener('click', runReferral);
+      $('#runRouting').addEventListener('click', runRouting);
+      $('#runResources').addEventListener('click', runResources);
+      $('#searchBtn').addEventListener('click', runSearch);
+    })();
+
+    // ======== Actions ========
+    async function sendChat(){
+      const input = $('#chatInput'); const text = input.value.trim(); if(!text) return;
+      setError('');
+      input.value='';
+      pushMessage('user', text);
+      try{
+        const payload = {
+          session_id: sessionId || undefined,
+          message: text,
+          patient_data: ($('#p_cc').value || state.symptoms.length || state.history.length) ? patientFromUI() : undefined,
+          facility_data: facilityFromUI(),
+          language: state.language
+        };
+        const data = await apiPost('/api/chat', payload);
+        if(!sessionId && data.session_id) setSession(data.session_id);
+        pushMessage('assistant', data.response, data.sources);
+      }catch(e){ setError(parseErr(e)); }
+    }
+
+    async function runTriage(){
+      setError('');
+      try{
+        const body = { patient: patientFromUI(), language: state.language, additional_notes: 'Run rapid triage using provided data.' };
+        const data = await apiPost('/api/triage', body);
+        alert('Triage Assessment\n\n'+(data.assessment||JSON.stringify(data,null,2)));
+      }catch(e){ setError(parseErr(e)); }
+    }
+
+    async function runReferral(){
+      setError('');
+      try{
+        const body = { patient: patientFromUI(), facility_capabilities: facilityFromUI(), language: state.language };
+        const data = await apiPost('/api/referral', body);
+        alert('Referral Recommendation\n\n'+(data.recommendation||JSON.stringify(data,null,2)));
+      }catch(e){ setError(parseErr(e)); }
+    }
+
+    async function runRouting(){
+      setError('');
+      try{
+        const body = { patient: patientFromUI(), facility_context: facilityFromUI(), language: state.language };
+        const data = await apiPost('/api/routing', body);
+        alert('Routing Plan\n\n'+(data.routing_plan||JSON.stringify(data,null,2)));
+      }catch(e){ setError(parseErr(e)); }
+    }
+
+    async function runResources(){
+      setError('');
+      try{
+        const body = { facility_data: facilityFromUI(), language: state.language };
+        const data = await apiPost('/api/resources', body);
+        alert('Resource Recommendations\n\n'+(data.recommendations||JSON.stringify(data,null,2)));
+      }catch(e){ setError(parseErr(e)); }
+    }
+
+    async function runSearch(){
+      setError('');
+      try{
+        const q = $('#q').value.trim(); if(!q) return;
+        const data = await apiPost('/api/knowledge/search', { query: q, language: state.language });
+        const sources = (data.sources||[]).map(s=>`• ${s.source}: ${s.content}`).join('\n\n');
+        alert(`Knowledge Search: ${q}\n\n${data.answer}\n\nSources:\n${sources}`);
+      }catch(e){ setError(parseErr(e)); }
+    }
+  </script>
+</body>
+</html>

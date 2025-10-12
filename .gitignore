@@ -1,0 +1,4 @@
+.env
+/.venv
+modules\sandbox.ipynb
+/medical_docs

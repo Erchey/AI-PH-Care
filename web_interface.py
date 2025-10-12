@@ -2,7 +2,8 @@
 FastAPI Web Interface for Healthcare AI Agent
 Provides REST API for web/mobile integration
 """
-
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -33,6 +34,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# Serve static frontend (index.html) and assets
+if os.path.isdir("public"):
+    app.mount("/assets", StaticFiles(directory="public"), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def static_catch_all(full_path: str):
+        # Let API routes take precedence; this catch-all only serves the SPA
+        if full_path.startswith("api/") or full_path in {"health", ""}:
+            # fall through to API routes (they are already defined)
+            pass
+        return FileResponse("public/index.html")
 
 # Initialize agent
 config = Config()

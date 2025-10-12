@@ -22,10 +22,7 @@ pandas
 
 # HTTP and web scraping (for document loaders)
 requests
-beautifulsoup4
-unstructured
-markdown
+
 
 # Utilities
 jinja2
-uuid

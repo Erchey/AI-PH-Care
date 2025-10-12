@@ -30,7 +30,7 @@ class MedicalRAGSystem:
         
         # Initialize embeddings (can work offline)
         self.embeddings = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/all-MiniLM-L6-v2",
+            model_name="sentence-transformers/paraphrase-MiniLM-L3-v2",
             model_kwargs={'device': 'cpu'}
         )
         

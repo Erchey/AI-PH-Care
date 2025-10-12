@@ -31,7 +31,7 @@ class MedicalRAGSystem:
         # Initialize embeddings (can work offline)
         self.embeddings = HuggingFaceEmbeddings(
             model_name="intfloat/e5-small",
-            model_kwargs={"device": "cpu", "torch_dtype": "auto"},
+            model_kwargs={"device": "cpu"},
             encode_kwargs={"normalize_embeddings": True}
         )
         

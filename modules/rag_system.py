@@ -368,7 +368,7 @@ if __name__ == "__main__":
     
     llm = ChatGroq(
         model='meta-llama/llama-4-scout-17b-16e-instruct',
-        api_key='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',
+        api_key=os.getenv('GROQ_API_KEY'),
         temperature=0.2
     )
     
@@ -393,7 +393,7 @@ if __name__ == "__main__":
     
     llm = ChatGroq(
         model='meta-llama/llama-4-scout-17b-16e-instruct',
-        api_key='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',
+        api_key=os.getenv('GROQ_API_KEY'),
         temperature=0.2
     )
     

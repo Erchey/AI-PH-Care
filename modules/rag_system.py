@@ -30,8 +30,9 @@ class MedicalRAGSystem:
         
         # Initialize embeddings (can work offline)
         self.embeddings = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/paraphrase-MiniLM-L3-v2",
-            model_kwargs={'device': 'cpu'}
+            model_name="intfloat/e5-small",
+            model_kwargs={"device": "cpu", "torch_dtype": "auto"},
+            encode_kwargs={"normalize_embeddings": True}
         )
         
         # Initialize or load vector store

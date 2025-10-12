@@ -6,6 +6,8 @@ services:
     region: oregon
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn -k uvicorn.workers.UvicornWorker web_interface:app --bind 0.0.0.0:$PORT
+    pythonVersion: 3.10.1
+
     healthCheckPath: /health
     autoDeploy: true
     envVars:

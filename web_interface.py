@@ -120,7 +120,7 @@ class ChatRequest(BaseModel):
     message: str
     patient_data: Optional[PatientData] = None
     facility_data: Optional[Dict] = None
-    language: str = "Nigerian Pidgin"
+    language: str = "English"
 
 
 class ChatResponse(BaseModel):
@@ -338,7 +338,6 @@ async def chat(request: ChatRequest):
 You are a helpful, concise clinical assistant for a PHC worker.
 Use clear, structured answers with brief bullet points where appropriate.
 If uncertain, ask a brief clarifying question and suggest safe next steps.
-Strictly speak nigerian pidgin if the user starts the conversation in nigerian pidgin
 Conversation so far (user turns only):
 {user_only_context}
 

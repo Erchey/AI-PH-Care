@@ -86,8 +86,7 @@ healthcare-ai-agent/
 
 ```bash
 # Clone repository
-git clone <your-repo-url>
-cd healthcare-ai-agent
+git clone https://github.com/Erchey/AI-PH-Care.git
 
 # Create virtual environment
 python -m venv venv
@@ -101,7 +100,7 @@ pip install -r requirements.txt
 
 ```bash
 # Copy environment template
-cp .env.example .env
+cp .env
 
 # Edit .env and add your Groq API key
 # Get free API key at: https://console.groq.com
@@ -225,25 +224,6 @@ rag.ingest_document("protocols/malaria_treatment.md",
                     metadata={"disease": "malaria"})
 ```
 
-### Adding New Tools
-
-```python
-# In tools.py
-@tool
-def your_custom_tool(parameter: str) -> str:
-    """
-    Description of your tool for the AI agent.
-    
-    Args:
-        parameter: What this parameter means
-    
-    Returns:
-        What the tool returns
-    """
-    # Use RAG or external APIs
-    result = rag_system.answer_with_sources(f"query about {parameter}")
-    return result['answer']
-```
 
 ### Multilingual Configuration
 
@@ -359,12 +339,6 @@ MIT License - See LICENSE file
 - Powered by Groq's lightning-fast inference
 - Medical knowledge from WHO, CDC, and national health authorities
 
-## 📞 Support
-
-For hackathon questions:
-- Create GitHub issue
-- Check demo.py for examples
-- Review module docstrings
 
 ## 🚀 Deployment Options
 
@@ -372,30 +346,6 @@ For hackathon questions:
 ```bash
 python agent.py
 ```
-
-### Docker Deployment
-```bash
-docker build -t healthcare-agent .
-docker run -p 8000:8000 healthcare-agent
-```
-
-### Cloud Deployment
-- AWS Lambda + API Gateway
-- Google Cloud Run
-- Azure Container Instances
-
-## 🎯 Hackathon Submission Checklist
-
-- [x] AI-assisted triage ✅
-- [x] Patient routing ✅
-- [x] Referral guidance ✅
-- [x] Resource allocation ✅
-- [x] Multilingual support ✅
-- [x] Offline capability ✅
-- [x] RAG implementation ✅
-- [x] LangGraph architecture ✅
-- [x] Groq integration ✅
-- [x] Tool-using agent ✅
 
 ---
 

@@ -61,7 +61,7 @@ rag_llm = ChatGroq(
 
 rag_system = MedicalRAGSystem(
     llm=rag_llm,
-    persist_directory="./vector_store"      # adjust if you want a different path
+    persist_directory="modules/vector_store"      # adjust if you want a different path
 )
 
 # optionally attach onto agent so other code can use it
@@ -120,7 +120,7 @@ class ChatRequest(BaseModel):
     message: str
     patient_data: Optional[PatientData] = None
     facility_data: Optional[Dict] = None
-    language: str = "English"
+    language: str = "Nigerian Pidgin"
 
 
 class ChatResponse(BaseModel):
@@ -338,7 +338,7 @@ async def chat(request: ChatRequest):
 You are a helpful, concise clinical assistant for a PHC worker.
 Use clear, structured answers with brief bullet points where appropriate.
 If uncertain, ask a brief clarifying question and suggest safe next steps.
-
+Strictly speak nigerian pidgin if the user starts the conversation in nigerian pidgin
 Conversation so far (user turns only):
 {user_only_context}
 
@@ -478,10 +478,18 @@ async def get_statistics():
 
 # Run server
 if __name__ == "__main__":
+    import logging
+    
+    # Configure logging
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
     uvicorn.run(
         "web_interface:app",
         host="0.0.0.0",
         port=8000,
         reload=True,
-        log_level="info"
+        log_level="debug",  # Changed from "info" to "debug"
     )

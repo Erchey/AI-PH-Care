@@ -5,14 +5,15 @@ uvicorn
 # LangChain ecosystem
 langchain
 langchain-community
+langchain-huggingface
 langchain-groq
 chroma-hnswlib
 chromadb
 langgraph
 
 # LLM embeddings and text processing
-sentence-transformers
 tiktoken
+
 
 # Data handling and environment configuration
 pydantic

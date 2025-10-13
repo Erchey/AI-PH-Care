@@ -23,7 +23,7 @@ class Config:
     # Multilingual Support
     SUPPORTED_LANGUAGES = [
         "English", "Spanish", "French", "Portuguese", 
-        "Swahili", "Hindi", "Arabic", "Mandarin"
+        "Swahili", "Hindi", "Arabic", "Mandarin", 'Nigerian Pidgin'
     ]
     
     # Triage Priority Levels

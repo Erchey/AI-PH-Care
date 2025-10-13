@@ -12,6 +12,7 @@ from langchain_community.document_loaders import (
     UnstructuredMarkdownLoader,
     WebBaseLoader
 )
+from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from langchain.schema import Document
 from typing import List, Dict
 import os
@@ -24,17 +25,18 @@ class MedicalRAGSystem:
     Supports PDFs, web links, text files, and markdown
     """
     
-    def __init__(self, llm, persist_directory="../vector_store"):
+    def __init__(self, llm, persist_directory="vector_store2"):
         self.llm = llm
         self.persist_directory = persist_directory
         
         # Initialize embeddings (can work offline)
-        self.embeddings = HuggingFaceEmbeddings(
-            model_name="intfloat/e5-small",
-            model_kwargs={"device": "cpu"},
-            encode_kwargs={"normalize_embeddings": True}
+
+        model = "sentence-transformers/all-mpnet-base-v2"
+        self.embeddings = HuggingFaceEndpointEmbeddings(
+            model=model,
+            task="feature-extraction",
+            huggingfacehub_api_token=os.getenv('HUGGINGFACEHUB_API_TOKEN'),
         )
-        
         # Initialize or load vector store
         self.vector_store = self._initialize_vector_store()
         
@@ -317,11 +319,34 @@ Answer:"""
 def setup_initial_knowledge_base(rag_system: MedicalRAGSystem):
     """
     Setup initial knowledge base with medical resources
-    This is where you'd add your medical documents and URLs
+    Ingests documents from folders and individual files/URLs
     """
     
-    # Example sources - replace with actual medical guidelines
-    sources = [
+    print("=" * 60)
+    print("Setting up medical knowledge base...")
+    print("=" * 60)
+    
+    # 1. Ingest entire folders of documents
+    folders_to_ingest = [
+        "../medical_docs",
+        "./protocols",
+        "./guidelines",
+        # Add more folder paths as needed
+    ]
+    
+    total_chunks = 0
+    
+    for folder in folders_to_ingest:
+        if os.path.exists(folder):
+            print(f"\n📁 Ingesting folder: {folder}")
+            chunks = rag_system.ingest_folder(folder)
+            total_chunks += chunks
+        else:
+            print(f"⚠️  Folder not found (skipping): {folder}")
+    
+    # 2. Ingest individual files and web sources with specific metadata
+    individual_sources = [
+        # Web sources
         {
             "path": "https://www.who.int/publications/guidelines",
             "metadata": {
@@ -330,41 +355,57 @@ def setup_initial_knowledge_base(rag_system: MedicalRAGSystem):
                 "language": "English"
             }
         },
-        # Add your medical PDFs
+        # Specific files with custom metadata
         {
-            "path": "./medical_docs/emergency_protocols.pdf",
+            "path": "./special_docs/emergency_protocols.pdf",
             "metadata": {
                 "category": "emergency",
-                "doc_type": "protocol"
+                "doc_type": "protocol",
+                "priority": "high"
             }
         },
-        # Add drug formularies
         {
-            "path": "./medical_docs/essential_medicines.pdf",
+            "path": "./special_docs/essential_medicines.pdf",
             "metadata": {
                 "category": "drugs",
-                "doc_type": "formulary"
+                "doc_type": "formulary",
+                "priority": "high"
             }
-        }
+        },
     ]
     
-    print("Setting up medical knowledge base...")
-    print("Note: Add your actual medical documents and URLs above")
+    print("\n📄 Ingesting individual sources with custom metadata...")
     
-    # Only ingest if files exist
-    for source in sources:
+    for source in individual_sources:
         path = source['path']
-        if path.startswith("http") or os.path.exists(path):
+        # Check if it's a URL or if file exists
+        if path.startswith("http://") or path.startswith("https://"):
             try:
-                rag_system.ingest_document(path, source.get('metadata'))
+                print(f"  → Fetching: {path}")
+                chunks = rag_system.ingest_document(path, source.get('metadata'))
+                total_chunks += chunks
             except Exception as e:
-                print(f"Warning: Could not ingest {path}: {e}")
+                print(f"  ❌ Error ingesting {path}: {e}")
+        elif os.path.exists(path):
+            try:
+                chunks = rag_system.ingest_document(path, source.get('metadata'))
+                total_chunks += chunks
+            except Exception as e:
+                print(f"  ❌ Error ingesting {path}: {e}")
+        else:
+            print(f"  ⚠️  File not found (skipping): {path}")
+    
+    # Summary
+    print("\n" + "=" * 60)
+    print(f"✅ Knowledge base setup complete!")
+    print(f"   Total chunks ingested: {total_chunks}")
+    print("=" * 60)
+    
+    return total_chunks
 
 
-
-
+# Example usage in __main__
 if __name__ == "__main__":
-    # Example usage
     from langchain_groq import ChatGroq
     
     llm = ChatGroq(
@@ -376,32 +417,11 @@ if __name__ == "__main__":
     rag = MedicalRAGSystem(llm)
     
     # Setup knowledge base (first time only)
-    # setup_initial_knowledge_base(rag)
+    # Uncomment the line below to ingest documents
+    setup_initial_knowledge_base(rag)
     
-    # Query the system
-    result = rag.answer_with_sources(
-        "What is the treatment protocol for viral infection?"
-    )
-    
-    print("Answer:", result['answer'])
-    print("\nSources:")
-    for i, source in enumerate(result['sources'], 1):
-        print(f"{i}. {source['source']}")
-
-if __name__ == "__main__":
-    # Example usage
-    from langchain_groq import ChatGroq
-    
-    llm = ChatGroq(
-        model='meta-llama/llama-4-scout-17b-16e-instruct',
-        api_key=os.getenv('GROQ_API_KEY'),
-        temperature=0.2
-    )
-    
-    rag = MedicalRAGSystem(llm)
-    
-    # Setup knowledge base (first time only)
-    # setup_initial_knowledge_base(rag)
+    # Or just ingest a single folder
+    # rag.ingest_folder("./medical_docs")
     
     # Query the system
     result = rag.answer_with_sources(

@@ -304,6 +304,19 @@ async def route_patient(request: RoutingRequest):
 
 
 # Chat endpoint for conversational interaction
+import traceback
+import sys
+from datetime import datetime
+import logging
+
+# Setup logging at the top of your file
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """
@@ -313,20 +326,18 @@ async def chat(request: ChatRequest):
     try:
         # 1) Session
         session_id = request.session_id or str(uuid.uuid4())
-        session = sessions.get(session_id, {"history": []})  # history: list[{"user":..., "assistant":...}]
+        session = sessions.get(session_id, {"history": []})
 
         # 2) Prepare optional data
         patient_dict = request.patient_data.dict() if request.patient_data else None
         if patient_dict and request.patient_data.vital_signs:
             patient_dict["vital_signs"] = request.patient_data.vital_signs.dict(exclude_none=True)
 
-        # 3) Build compact context (last N pairs). Prefer not to paste full assistant text repeatedly.
+        # 3) Build compact context
         MAX_TURNS = 5
         recent = session["history"][-MAX_TURNS:]
-        # Keep only user lines in the stitched context (reduces echo tendency)
         user_only_context = "\n".join([f"User: {h['user']}" for h in recent if h.get("user")])
 
- 
         # NEW: pull RAG context for the current message
         rag_hits = rag_system.retrieve(request.message, k=4)
         rag_context = "\n\n".join(
@@ -348,7 +359,6 @@ New user message:
 {request.message}
 """.strip()
 
-
         # 4) Call agent
         result = agent.run(
             user_input=user_prompt,
@@ -361,14 +371,12 @@ New user message:
         response_text = ""
         messages = result.get("messages", [])
         if messages:
-            # Try to pick the last message with content
             last = next((m for m in reversed(messages) if hasattr(m, "content") and m.content), None)
             response_text = (last.content if last else "")
         else:
-            # Fallbacks if your agent returns another shape
             response_text = str(result.get("answer") or result.get("output") or "")
 
-        # Optional echo guard: if the model echoed the previous assistant turn, strip it
+        # Optional echo guard
         if session["history"]:
             prev_assistant = session["history"][-1].get("assistant", "")
             if prev_assistant and response_text.endswith(prev_assistant):
@@ -379,12 +387,11 @@ New user message:
         if "retrieved_docs" in result:
             sources = [doc.get("source", "Unknown") for doc in result["retrieved_docs"]]
 
-        # 6) Update memory (append this turn)
+        # 6) Update memory
         session["history"].append({
             "user": request.message,
             "assistant": response_text.strip(),
         })
-        # Keep history bounded
         if len(session["history"]) > 50:
             session["history"] = session["history"][-50:]
 
@@ -401,9 +408,121 @@ New user message:
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Chat error: {str(e)}")
+        # ============================================
+        # ENHANCED ERROR HANDLING WITH FULL TRACEBACK
+        # ============================================
+        
+        # Get full traceback information
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        
+        # Format the full traceback as a string
+        tb_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
+        full_traceback = ''.join(tb_lines)
+        
+        # Extract specific error location
+        tb_list = traceback.extract_tb(exc_traceback)
+        if tb_list:
+            last_frame = tb_list[-1]
+            error_file = last_frame.filename
+            error_line = last_frame.lineno
+            error_function = last_frame.name
+            error_code = last_frame.line
+        else:
+            error_file = "Unknown"
+            error_line = "Unknown"
+            error_function = "Unknown"
+            error_code = "Unknown"
+        
+        # Log the full error with traceback
+        logger.error(
+            f"Chat endpoint error:\n"
+            f"Type: {exc_type.__name__}\n"
+            f"Message: {str(exc_value)}\n"
+            f"File: {error_file}\n"
+            f"Line: {error_line}\n"
+            f"Function: {error_function}\n"
+            f"Code: {error_code}\n"
+            f"Full Traceback:\n{full_traceback}"
+        )
+        
+        # Option 1: Return detailed error (DEVELOPMENT ONLY - not for production)
+        error_detail = {
+            "error_type": exc_type.__name__,
+            "error_message": str(exc_value),
+            "file": error_file,
+            "line": error_line,
+            "function": error_function,
+            "code_line": error_code,
+            "full_traceback": full_traceback,
+            "session_id": request.session_id,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        # Option 2: Return sanitized error (PRODUCTION)
+        # Uncomment for production to hide sensitive details
+        # error_detail = f"Chat error: {str(e)}"
+        
+        raise HTTPException(
+            status_code=500,
+            detail=error_detail  # Use error_detail for dev, str(e) for prod
+        )
 
 
+# Alternative: Dedicated error logging function
+# def log_detailed_error(e: Exception, context: dict = None):
+#     """
+#     Utility function to log detailed error information
+    
+#     Args:
+#         e: The exception object
+#         context: Additional context (request data, session info, etc.)
+#     """
+#     exc_type, exc_value, exc_traceback = sys.exc_info()
+    
+#     # Get traceback details
+#     tb_list = traceback.extract_tb(exc_traceback)
+    
+#     error_info = {
+#         "timestamp": datetime.now().isoformat(),
+#         "error_type": exc_type.__name__ if exc_type else "Unknown",
+#         "error_message": str(exc_value),
+#         "traceback": []
+#     }
+    
+#     # Build traceback list
+#     for frame in tb_list:
+#         error_info["traceback"].append({
+#             "file": frame.filename,
+#             "line": frame.lineno,
+#             "function": frame.name,
+#             "code": frame.line
+#         })
+    
+#     # Add context if provided
+#     if context:
+#         error_info["context"] = context
+    
+#     # Log as JSON for easy parsing
+#     logger.error(f"Detailed error: {error_info}")
+    
+#     return error_info
+
+
+# Usage with the alternative function:
+"""
+except Exception as e:
+    error_details = log_detailed_error(e, context={
+        "session_id": request.session_id,
+        "message": request.message[:100],  # First 100 chars
+        "has_patient_data": request.patient_data is not None
+    })
+    
+    raise HTTPException(
+        status_code=500,
+        detail=f"Chat error at {error_details['traceback'][-1]['file']}:"
+               f"{error_details['traceback'][-1]['line']} - {str(e)}"
+    )
+"""
 
 # Get supported languages
 @app.get("/api/languages")

@@ -4,7 +4,7 @@ Uses LLM reasoning and RAG for intelligent patient triage
 No hardcoded rules - fully AI-powered decision making
 """
 
-from typing import Dict
+from typing import Dict, Optional
 import json
 
 
@@ -15,18 +15,26 @@ class AITriageModule:
         self.llm = llm
         self.rag_system = rag_system
     
-    def assess_patient(self, patient_data: Dict, user_query: str, language: str = "English") -> Dict:
+    def assess_patient(self, patient_data: Optional[Dict], user_query: str, language: str = "English") -> Dict:
         """
         Perform AI-driven triage assessment
         
         Args:
-            patient_data: Patient information
+            patient_data: Patient information (can be None)
             user_query: Healthcare worker's query
             language: Preferred language
         
         Returns:
             Comprehensive triage assessment with reasoning
         """
+        
+        # Handle None patient_data
+        if patient_data is None:
+            patient_data = {}
+        
+        # Validate patient_data is a dictionary
+        if not isinstance(patient_data, dict):
+            patient_data = {}
         
         # Retrieve relevant triage guidelines using RAG
         triage_guidelines = self._retrieve_triage_guidelines(patient_data)
@@ -54,18 +62,30 @@ class AITriageModule:
     def _retrieve_triage_guidelines(self, patient_data: Dict) -> list:
         """Retrieve relevant triage guidelines using RAG"""
         
-        # Build context-aware query
-        symptoms = patient_data.get('symptoms', [])
-        chief_complaint = patient_data.get('chief_complaint', '')
-        age = patient_data.get('age', 'adult')
+        # Safely extract patient information with defaults
+        symptoms = patient_data.get('symptoms', []) if patient_data else []
+        chief_complaint = patient_data.get('chief_complaint', '') if patient_data else ''
+        age = patient_data.get('age', 'adult') if patient_data else 'adult'
         
-        query = f"""triage assessment guidelines for patient with {chief_complaint} 
-                    symptoms {', '.join(symptoms)} age {age} priority determination urgency assessment"""
+        # Ensure symptoms is a list
+        if not isinstance(symptoms, list):
+            symptoms = []
         
-        # Retrieve relevant documents
-        docs = self.rag_system.retrieve(query, k=3)
+        # Build fallback query if no specific data
+        if not chief_complaint and not symptoms:
+            query = "general triage assessment guidelines priority determination urgency"
+        else:
+            symptoms_str = ', '.join(str(s) for s in symptoms) if symptoms else 'general symptoms'
+            query = f"""triage assessment guidelines for patient with {chief_complaint or 'complaint'} 
+                        symptoms {symptoms_str} age {age} priority determination urgency assessment"""
         
-        return docs
+        try:
+            # Retrieve relevant documents
+            docs = self.rag_system.retrieve(query, k=3)
+            return docs if docs else []
+        except Exception as e:
+            print(f"Warning: Could not retrieve triage guidelines: {e}")
+            return []
     
     def _build_triage_prompt(
         self,
@@ -76,20 +96,28 @@ class AITriageModule:
     ) -> str:
         """Build comprehensive prompt for AI triage"""
         
-        # Extract patient information
-        age = patient_data.get('age', 'unknown')
-        gender = patient_data.get('gender', 'unknown')
-        chief_complaint = patient_data.get('chief_complaint', user_query)
-        symptoms = patient_data.get('symptoms', [])
-        vital_signs = patient_data.get('vital_signs', {})
-        medical_history = patient_data.get('medical_history', [])
+        # Safely extract patient information with defaults
+        age = patient_data.get('age', 'unknown') if patient_data else 'unknown'
+        gender = patient_data.get('gender', 'unknown') if patient_data else 'unknown'
+        chief_complaint = patient_data.get('chief_complaint', user_query) if patient_data else user_query
+        symptoms = patient_data.get('symptoms', []) if patient_data else []
+        vital_signs = patient_data.get('vital_signs', {}) if patient_data else {}
+        medical_history = patient_data.get('medical_history', []) if patient_data else []
+        
+        # Ensure proper types
+        if not isinstance(symptoms, list):
+            symptoms = []
+        if not isinstance(vital_signs, dict):
+            vital_signs = {}
+        if not isinstance(medical_history, list):
+            medical_history = []
         
         # Format vital signs
         vital_signs_str = json.dumps(vital_signs, indent=2) if vital_signs else "Not available"
         
         # Format guidelines
         guidelines_text = "\n\n".join([
-            f"Guideline {i+1}:\n{doc['content']}"
+            f"Guideline {i+1}:\n{doc.get('content', 'No content')}"
             for i, doc in enumerate(guidelines)
         ]) if guidelines else "No specific guidelines retrieved"
         
@@ -99,8 +127,8 @@ PATIENT INFORMATION:
 - Age: {age}
 - Gender: {gender}
 - Chief Complaint: {chief_complaint}
-- Symptoms: {', '.join(symptoms) if symptoms else 'Not specified'}
-- Medical History: {', '.join(medical_history) if medical_history else 'None reported'}
+- Symptoms: {', '.join(str(s) for s in symptoms) if symptoms else 'Not specified'}
+- Medical History: {', '.join(str(h) for h in medical_history) if medical_history else 'None reported'}
 
 VITAL SIGNS:
 {vital_signs_str}
@@ -149,14 +177,19 @@ IMPORTANT GUIDELINES:
 - Account for resource-limited settings
 - Provide actionable, practical recommendations
 - Use language appropriate for PHC workers in {language}
+- If patient information is limited, acknowledge this and provide conservative recommendations
 
 Provide your assessment in a clear, structured format that a PHC worker can follow immediately.
 """
         
         return prompt
     
-    def _structure_response(self, ai_response: str, patient_data: Dict) -> Dict:
+    def _structure_response(self, ai_response: str, patient_data: Optional[Dict]) -> Dict:
         """Structure the AI response into standardized format"""
+        
+        # Ensure patient_data is a dict
+        if not patient_data:
+            patient_data = {}
         
         # Extract priority level from response
         priority = self._extract_priority(ai_response)
@@ -166,7 +199,7 @@ Provide your assessment in a clear, structured format that a PHC worker can foll
             "priority": priority,
             "explanation": ai_response,
             "patient_summary": {
-                "age": patient_data.get('age'),
+                "age": patient_data.get('age', 'unknown'),
                 "chief_complaint": patient_data.get('chief_complaint', ''),
                 "key_vitals": patient_data.get('vital_signs', {})
             },
@@ -179,6 +212,9 @@ Provide your assessment in a clear, structured format that a PHC worker can foll
     
     def _extract_priority(self, response: str) -> str:
         """Extract priority level from AI response"""
+        
+        if not response:
+            return "URGENT"  # Default to URGENT if no response
         
         response_upper = response.upper()
         
@@ -219,18 +255,27 @@ Provide your assessment in a clear, structured format that a PHC worker can foll
         
         return safety_nets.get(priority, "Monitor patient and reassess if condition changes.")
     
-    def compare_triage_decisions(self, patient_data: Dict, human_triage: str, language: str = "English") -> str:
+    def compare_triage_decisions(
+        self, 
+        patient_data: Optional[Dict], 
+        human_triage: str, 
+        language: str = "English"
+    ) -> str:
         """
         Compare AI triage with human clinician's triage for learning
         
         Args:
-            patient_data: Patient information
+            patient_data: Patient information (can be None)
             human_triage: Human clinician's triage decision
             language: Language preference
         
         Returns:
             Analysis comparing the two decisions
         """
+        
+        # Ensure patient_data is not None
+        if patient_data is None:
+            patient_data = {}
         
         # Get AI assessment
         ai_assessment = self.assess_patient(patient_data, "Assess triage priority", language)

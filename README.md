@@ -1,8 +1,8 @@
 # 🏥 Healthcare AI Agent for PHC Workers
 
-An intelligent AI agent built with **LangGraph** and **Groq** to support Primary Healthcare (PHC) workers in resource-limited settings. Uses RAG (Retrieval-Augmented Generation) for evidence-based medical guidance.
+An intelligent AI agent built with **LangGraph** and **Groq** to support Primary Healthcare (PHC) workers in resource-limited settings. Uses RAG (Retrieval-Augmented Generation) for evidence-based medical guidance and Assistance.
 
-## 🎯 Hackathon Objectives
+## 🎯 Objectives
 
 ✅ **Intelligent, Accessible PHC Support Tools**
 - AI-assisted triage and patient assessment
